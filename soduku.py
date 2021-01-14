@@ -1,77 +1,44 @@
 import numpy
 import math
 
-class SodukuSolver():
-    '''
-    SodukuSolver -- a soduku solver that uses numpy array
+class OutOfChoice(Exception):
+    ''' For use by SodukuConfig, when running out of choices'''
+    pass
 
+class InvalidConfiguration(ValueError):
+    ''' For use when SodukuConfig is valid '''
+    def __init__(self, val):
+        message = "Invalid soduku configuration."
+        super().__init__(message, str(val))
+
+class SodukuConfig():
+    '''
+    SodukuConfig -- Container for the state information for a soduku 
+    configuration
+    
     Args:
-        puzzle: the puzzle that needs to be solved
-    '''
-
-    def __init__(self, puzzle):
-        ''' Constructor '''
-        self.puzzle = puzzle
-
-    @property
-    def puzzle(self):
-        ''' Return the initial puzzle '''
-        return self.__puzzle_init
-
-    @puzzle.setter
-    def puzzle(self, puzzle):
-        ''' Set the initial puzzle '''
-        self.__puzzle_init = numpy.array(puzzle)
-        if len(self.__puzzle_init.shape) != 2 or \
-            self.__puzzle_init.shape[0] != 9 or \
-            self.__puzzle_init.shape[1] != 9 :
-                raise ValueError("Invalid input puzzle dimension")
+        config: The configuration to generate the state information for.
         
-        validity = self.is_valid_puzzle(puzzle)
-        if validity == -1:
-            raise ValueError("Invalid input puzzle")
-        elif validity == 0:
-            raise ValueError("The input puzzle has already been solved.")
+    Attributes:
+        valid_choices: a 9x9x9 boolean numpy array indicating the valid choices
+            for each square
+        priority list: a list of tuples (row, col), indicating which squares 
+            should be filled first.
+    '''
+    
+    def __init__(self, config):
+        config = numpy.array(config)
+        if config.shape != (9, 9):
+                raise ValueError("Invalid input configuration dimension")
+        self.config = config.copy()
+        self.__gen_valid_choices()
+        self.__gen_priority_list()
+        self.current_square = 0
+        self.current_num = 0
+        self.choice_list = []
     
     @staticmethod
-    def is_valid_puzzle(puzzle): 
-        ''' 
-        Check if a puzzle configuration is valid 
-        
-        Args:
-            puzzle: a 9x9 soduku configuration
-        
-        Returns:
-            -1: invalid configuration
-             0: complete and valid configuration
-             positive int: incomplete configuration, the number of 0s remaining
-                 in the puzzle
-        '''
-        assert(isinstance(puzzle, numpy.ndarray))
-        assert(puzzle.shape == (9, 9))
-        
-        for i in range(0,9):
-            # scan for rows and columns
-            if SodukuSolver.is_valid_unit(puzzle[i, :]) < 0:
-                return -1
-            # scan for columns
-            if SodukuSolver.is_valid_unit(puzzle[:, i]) < 0:
-                return -1
-
-        total = 0
-        for i in range(0,3):
-            for j in range(0,3):
-                result = SodukuSolver.is_valid_unit(
-                        puzzle[3*i:3*(i+1), 3*j:3*(j+1)])
-                if result < 0:
-                    return -1
-                else:
-                    total += result
-        
-        return result
-    
-    @staticmethod  
-    def is_valid_unit(unit):
+    def __is_valid_unit(unit):
         '''
         Check if a unit has a valid configuration
         
@@ -83,12 +50,8 @@ class SodukuSolver():
              positive int: incomplete configuration, the number of 0s remaining
                  in the unit
         '''
-        assert(isinstance(puzzle, numpy.ndarray))
-        assert(len(unit.flatten()) == 9)
-        
         unit = unit.flatten()
-        if len(unit) != 9:
-            raise  ValueError("Invalid subunit dimension")
+        assert(len(unit) == 9)
         
         # Note that we need to check for number 0-9, and there are 10 numbers!
         check = [0] * 10
@@ -96,24 +59,34 @@ class SodukuSolver():
         for i in unit:
             check[i] += 1
             if check[i] > 1 and i != 0:
-                return -1
+                raise InvalidConfiguration(unit)
         # return how many 0s are left. 
         return check[0]
-        
-    @staticmethod
-    def gen_valid_choices(puzzle):
-        '''
-        Output the valid choices each square can take, for the whole puzzle
-        
-        Args:
-            puzzle: a 9x9 soduku configuration
-            
-        Returns:
-            A 9x9x9 boolean numpy array indicating the valid choices
-        '''
-        assert(isinstance(puzzle, numpy.ndarray))
-        assert(puzzle.shape == (9, 9))
 
+    def is_valid(self): 
+        ''' 
+        Check if a soduku configuration is valid 
+        
+        Returns:
+             0: complete and valid configuration
+             positive int: incomplete configuration, the number of 0s remaining
+                 in the puzzle
+        '''
+        for i in range(0,9):
+            # scan for rows and columns
+            self.__is_valid_unit(self.config[i, :]) < 0
+            self.__is_valid_unit(self.config[:, i]) < 0
+    
+        total = 0
+        for i in range(0,3):
+            for j in range(0,3):
+                total += self.__is_valid_unit(
+                        self.config[3*i:3*(i+1), 3*j:3*(j+1)])
+        
+        return total
+        
+    def __gen_valid_choices(self):
+        ''' Generate the valid choices array '''
         # Initially every number is possible in every square, as we discover
         # existing numbers, they get masked out. 
         # We use the value in the puzzle to do indexing directly, 
@@ -123,106 +96,148 @@ class SodukuSolver():
         for i in range(0,9):
             for j in range(0,9):
                 # Skip the 0s
-                if puzzle[i,j] > 1:
-                    num = puzzle[i,j] - 1
+                if self.config[i,j] > 0:
+                    num = self.config[i,j] - 1
                     row_arr[i, num] = False
-                    col_arr[j,num] = False
+                    col_arr[j, num] = False
                     square_arr[math.floor(i/3), math.floor(j/3), num] = False
                     
         # Calculate the valid choices
-        valid_choices = numpy.full((9, 9, 9), True)
+        self.valid_choices = numpy.full((9, 9, 9), True)
         for i in range(0,9):
             for j in range(0,9):
-                valid_choices[i,j] = row_arr[i] & col_arr[j] & \
+                self.valid_choices[i,j] = row_arr[i] & col_arr[j] & \
                 square_arr[math.floor(i/3), math.floor(j/3)]
-        
-        return valid_choices
-    
-    @staticmethod
-    def gen_priority_list(valid_choices):
-        '''
-        Generate a priority list from a valid choices array
-        
-        Args: 
-            valid_choices: a 9x9x9 boolean array indicating the valid choices
-        
-        Returns:
-            priority list - a sorted list of tuples (row, col, num), indicating
-            which squares should be filled first.
-        '''
-        
-        assert(isinstance(valid_choices, numpy.ndarray))
-        assert(valid_choices.shape == (9, 9 ,9))
-        
-        priority2d = numpy.sum(valid_choices, 2)
-        prioritytbl = [(0, 0, 0)] * 81
+                
+    def __gen_priority_list(self):
+        ''' Generate the priority list for a soduku configuration '''
+        self.priority2d = numpy.sum(self.valid_choices, 2)
+        prioritytbl = []
         for i in range(0, 9):
             for j in range(0, 9):
-                prioritytbl[i*9+j] = (i, j, priority2d[i, j])
-
-        return [(x[0], x[1]) for x in sorted(prioritytbl, key=lambda x: x[2])]
-
-    @staticmethod
-    def gen_choice(valid_choices, priority_list, n):
+                if self.config[i,j] == 0:
+                    prioritytbl.append((i, j, self.priority2d[i, j]))
+        self.priority_list = [(x[0], x[1]) for x in 
+                              sorted(prioritytbl, key=lambda x: x[2]) 
+                              if x[2] != 0]
+    
+    def gen_choice(self, n):
         '''
         Generate the nth choice from a priority list and valid choices pair
         
         Args: 
-            valid_choices: a 9x9x9 boolean numpy array indicating the valid 
-            choices (generated from gen_valid_choices())
-            priority_list: a sorted list of tuples (row, col, num), indicating
-            which squares should be filled first. (generated from 
-            gen_priority_list())
-            n: the choice to output at the current configuration
+            n: the nth choice to generate
             
         Returns:
             The nth choice at the current configuration in the format of 
             (row, col, num), so square at (row, col) needs to be filled with 
-            num
+            num. (0, 0, 0) will be returned if a choice cannot be generated.
         '''
-        assert(isinstance(priority_list, list))
-        assert(len(priority_list) == 81)
-        assert(isinstance(valid_choices, numpy.ndarray))
-        assert(valid_choices.shape == (9, 9 ,9))
         
-        k = 0
-        for coord in priority_list:
-            for i, choice in enumerate(valid_choices[coord]):
-                if choice:
-                    if k == n:
-                        return (coord[0], coord[1], i + 1)
-                    else:
-                        k += 1
-                    
-        raise OverflowError("The choice you specified is beyond all possible \
-choices in the current configuration.")
+        # We have cached the previous choice
+        if n < len(self.choice_list):
+            return self.choice_list[n]
         
-    @staticmethod
-    def gen_config(current_config, valid_choices, priority_list, n):
+        # Generate new choices
+        for i in range(self.current_square, len(self.priority_list)):
+            self.current_square = i
+            coord = self.priority_list[i]
+            choices = self.valid_choices[coord]
+            for j in range(self.current_num, len(choices)):
+                self.current_num = j
+                if choices[j]:
+                    self.choice_list.append((coord[0], coord[1], j + 1))
+                    if n == (len(self.choice_list) - 1):
+                        # Manually increase the loop counter by 1, because we
+                        # are exiting
+                        self.current_num += 1
+                        return self.choice_list[-1]       
+                
+        # We have reached the end without getting a solution 
+        return (0, 0, 0)
+    
+    def gen_config(self, n):
         '''
-        Generate the nth next configuration from the current configuration
+        Generate a new soduku configuration based on the nth choice
         
         Args:
-            current_config: the current puzzle configuration
-            valid_choices: a 9x9x9 boolean numpy array indicating the valid 
-            choices (generated from gen_valid_choices()).
-            priority_list: a sorted list of tuples (row, col, num), indicating
-            which squares should be filled first. (generated from 
-            gen_priority_list()).
-            n: the nth next configuration to generate.
+            n: the nth new configuration to generate
+            
+        Returns:
+            The nth new soduku configuration
         '''
-        assert(isinstance(priority_list, list))
-        assert(len(priority_list) == 81)
-        assert(isinstance(valid_choices, numpy.ndarray))
-        assert(valid_choices.shape == (9, 9 ,9))
-        assert(SodukuSolver.is_valid_puzzle(current_config) > 0)
-        choice = SodukuSolver.gen_choice(valid_choices, priority_list,n)
-        new_config = numpy.copy(current_config)
+        choice = self.gen_choice(n)
+        if choice == (0, 0, 0):
+            raise OutOfChoice();
+        new_config = numpy.copy(self.config)
         new_config[choice[0], choice[1]] = choice[2]
-        return new_config
+        return SodukuConfig(new_config)
+    
+    def __next__(self):
+        '''Make the class iterable'''
+        try:
+            return self.gen_config(len(self.choice_list))
+        except OutOfChoice:
+            raise StopIteration
+            
+    def __repr__(self):
+        return (self.config.__repr__())
+    
+    def __str__(self):
+        return (self.config.__str__())
+        
+    
+class SodukuSolver():
+    '''
+    SodukuSolver -- a soduku solver that uses numpy array
+
+    Args:
+        puzzle: the puzzle that needs to be solved
+    '''
+
+    def __init__(self, input_array):
+        ''' Constructor '''
+        self.config_init = SodukuConfig(input_array)
+        validity = self.config_init.is_valid()
+        if validity == 0:
+            raise ValueError("The input puzzle has already been solved.")
+        
+        # The configurations we have tried
+        self.configs = [self.config_init]
+        self.solution = None
+        self.n = 0
+    
+    def solve(self):
+        '''
+        Solve a Soduku puzzle using depth-first search with backtracking
+        '''
+
+        # While we still have squares to fill, try to fill the squares
+        while self.configs[-1].is_valid() > 0 and self.n < 100:
+            try:
+                self.configs.append(next(self.configs[-1]))
+            except StopIteration:
+                self.configs.pop()
+                next(self.configs[-1])
+            self.n += 1
+        self.solution = self.configs[-1]
+        return self.solution
+
+    def __len__(self):
+        return self.configs.__len__()
+    
+    def __repr__(self):
+        return "<SodokuSolver: " + str(self.__len__()) + ">"
+    
+    def __str__(self):
+        return "SodukuSolver: " + str(self.__len__()) + "\n" + self.configs[-1].__str__()
+    
+    def __getitem__(self, i):
+        return self.configs[i]
     
 if __name__ == '__main__':
-    current_config = numpy.array([[0, 0, 3, 0, 4, 2, 0, 9, 0],
+    current_config = numpy.array(
+                    [[0, 0, 3, 0, 4, 2, 0, 9, 0],
                     [0, 9, 0, 0, 6, 0, 5, 0, 0],
                     [5, 0, 0, 0, 0, 0, 0, 1, 0],
                     [0, 0, 1, 7, 0, 0, 2, 8, 5],
@@ -231,16 +246,18 @@ if __name__ == '__main__':
                     [0, 3, 0, 0, 0, 0, 0, 0, 1],
                     [0, 0, 5, 0, 9, 0, 0, 2, 0],
                     [0, 8, 0, 2, 1, 0, 6, 0, 0]])
-    solver = SodukuSolver(current_config)
-    valid_choices = solver.gen_valid_choices(current_config)
-    priority_list = solver.gen_priority_list(valid_choices)
-    print(current_config)
-    print(solver.gen_choice(valid_choices, priority_list, 0))
-    print(solver.gen_config(current_config, valid_choices, priority_list, 0))
-    print(solver.gen_choice(valid_choices, priority_list, 1))
-    print(solver.gen_config(current_config, valid_choices, priority_list, 1))
-    print(solver.gen_choice(valid_choices, priority_list, 2))
-    print(solver.gen_config(current_config, valid_choices, priority_list, 2))
+#    state = SodukuConfig(current_config)
+#    print(next(state))
+#    print(next(state))
+#    print(next(state))
+#    print(state.choice_list)
+#    print(state.gen_choice(0))
+#    print(state.gen_choice(1))
+#    print(state.gen_choice(2))
+#    print(state)
 
+    solver = SodukuSolver(current_config)
+    print(solver.config_init)
+    print(solver.solve())
 
 
