@@ -1,2 +1,2 @@
-# SodukuSolver
-Yet another Soduku Solver. 
+# SudokuSolver
+Yet another Sudoku Solver. 
