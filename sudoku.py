@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Sodoku solver using depth first search
+Sudoku solver using depth first search
 @author: fangfufu
 """
 
@@ -10,18 +10,18 @@ import math
 import sys
 
 class OutOfChoice(Exception):
-    ''' For use by SodokuConfig, when running out of choices'''
+    ''' For use by SudokuConfig, when running out of choices'''
     pass
 
 class InvalidConfiguration(ValueError):
-    ''' For use when SodokuConfig is valid '''
+    ''' For use when SudokuConfig is valid '''
     def __init__(self, val):
-        message = "Invalid Sodoku configuration."
+        message = "Invalid Sudoku configuration."
         super().__init__(message, str(val))
 
-class SodokuConfig():
+class SudokuConfig():
     '''
-    SodokuConfig -- Container for the state information for a Sodoku 
+    SudokuConfig -- Container for the state information for a Sudoku 
     configuration
     
     Args:
@@ -94,7 +94,7 @@ class SodokuConfig():
 
     def is_valid(self): 
         ''' 
-        Check if a Sodoku configuration is valid 
+        Check if a Sudoku configuration is valid 
         
         Returns:
              0: complete and valid configuration
@@ -140,7 +140,7 @@ class SodokuConfig():
         return valid_choices
                 
     def __gen_priority_list(self):
-        ''' Generate the priority list for a Sodoku configuration '''
+        ''' Generate the priority list for a Sudoku configuration '''
         self.priority2d = numpy.sum(self.valid_choices, 2)
         prioritytbl = []
         for i in range(0, 9):
@@ -187,39 +187,39 @@ class SodokuConfig():
     
     def gen_config(self, n):
         '''
-        Generate a new Sodoku configuration based on the nth choice
+        Generate a new Sudoku configuration based on the nth choice
         
         Args:
             n: the nth new configuration to generate
             
         Returns:
-            The nth new Sodoku configuration
+            The nth new Sudoku configuration
         '''
         choice = self.__gen_choice(n)
         if choice == (0, 0, 0):
             raise OutOfChoice();
         new_config = numpy.copy(self.config)
         new_config[choice[0], choice[1]] = choice[2]
-        return SodokuConfig(new_config)
+        return SudokuConfig(new_config)
         
     
-class SodokuSolver():
+class SudokuSolver():
     '''
-    SodokuSolver -- a Sodoku solver that uses numpy array
+    SudokuSolver -- a Sudoku solver that uses numpy array
 
     Args:
         input_array: the puzzle that needs to be solved
         
     Attributes:
-        configs: the Sodoku configuration stack
-        solution: the Sodoku solution
+        configs: the Sudoku configuration stack
+        solution: the Sudoku solution
         self.limit: the maximum step count before aborting
         n: the number of steps taken
     '''
 
     def __init__(self, input_array, limit=sys.maxsize):
         ''' Constructor '''
-        self.config_init = SodokuConfig(input_array)
+        self.config_init = SudokuConfig(input_array)
         validity = self.config_init.is_valid()
         if validity == 0:
             raise ValueError("The input puzzle has already been solved.")
@@ -234,10 +234,10 @@ class SodokuSolver():
         return self.configs.__len__()
     
     def __repr__(self):
-        return "<SodokuSolver: len:" + str(self.__len__()) + ">"
+        return "<SudokuSolver: len:" + str(self.__len__()) + ">"
     
     def __str__(self):
-        return "--- SodokuSolver --- \n" + \
+        return "--- SudokuSolver --- \n" + \
             "Step count: " + str(self.n) + "\n" + \
             "Stack length: " + str(self.__len__()) + "\n" + \
             self.configs[-1].__str__() + "\n"
@@ -247,7 +247,7 @@ class SodokuSolver():
     
     def solve(self):
         '''
-        Solve a Sodoku puzzle using depth-first search with backtracking
+        Solve a Sudoku puzzle using depth-first search with backtracking
         '''
         # While we still have squares to fill, try and fill the squares
         while self.configs[-1].is_valid() > 0 and self.n < self.limit:
@@ -270,5 +270,3 @@ class SodokuSolver():
                         if self.configs[i] == self.configs[i]:
                             return True
                         
-
-
