@@ -254,19 +254,17 @@ class SudokuSolver():
             if not (self.n % 10000):
                 print(self)
             try:
-                self.configs.append(next(self.configs[-1]))
+                next_config = next(self.configs[-1])
             except StopIteration:
                 self.configs.pop()
+            if not self.is_existing_config(next_config):
+                self.configs.append(next_config)
             self.n += 1
-                           
         self.solution = self.configs[-1]
         return self.solution
 
-    def identical_state_detection(self, n):
-        if self.n > n:
-            for i in range(-1, -n, -1):
-                for j in range(-n+1, 0):
-                    if i!= j:
-                        if self.configs[i] == self.configs[i]:
-                            return True
+    def is_existing_config(self, this_config):
+            for i in range(-1, -len(self)-1, -1):
+                if this_config == self.configs[i]:
+                    return True
                         
