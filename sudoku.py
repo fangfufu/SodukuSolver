@@ -28,8 +28,8 @@ class SudokuConfig():
         config: The configuration to generate the state information for.
         
     Attributes:
-        valid_decisions: a 9x9x9 boolean numpy array indicating the valid decisions
-            for each square
+        valid_decisions: a 9x9x9 boolean numpy array indicating the valid 
+            decisions for each square
         priority list: a list of tuples (row, col), indicating which squares 
             should be filled first.
         current_level: the square that needs to be tried, counting from the 
