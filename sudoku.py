@@ -14,7 +14,7 @@ class OutOfChoice(Exception):
     pass
 
 class InvalidConfiguration(ValueError):
-    ''' For use when SudokuConfig is valid '''
+    ''' For use by SudokuConfig, when the sudoku configuration is valid '''
     def __init__(self, val):
         message = "Invalid Sudoku configuration."
         super().__init__(message, str(val))

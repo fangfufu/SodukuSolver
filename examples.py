@@ -83,6 +83,6 @@ if __name__ == '__main__':
             [0, 7, 6, 3, 9, 4, 0, 0, 0],
             [0, 0, 4, 0, 0, 5, 0, 8, 0]
             ])
-    solver = SudokuSolver(hard_puzzle_10)
+    solver = SudokuSolver(hard_puzzle_1)
     solver.solve()
     print(solver)
