@@ -129,6 +129,6 @@ if __name__ == '__main__':
     
     zeros = numpy.zeros([9, 9], int)
     
-    solver = SudokuSolver(norvig_0_19, check_identical_config=False)
+    solver = SudokuSolver(norvig_0_19, check_identical_config=True)
     solver.solve()
     print(solver)
