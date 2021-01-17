@@ -1,19 +1,27 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Sodoku solver using depth first search
+@author: fangfufu
+"""
+
 import numpy
 import math
+import sys
 
 class OutOfChoice(Exception):
-    ''' For use by SodukuConfig, when running out of choices'''
+    ''' For use by SodokuConfig, when running out of choices'''
     pass
 
 class InvalidConfiguration(ValueError):
-    ''' For use when SodukuConfig is valid '''
+    ''' For use when SodokuConfig is valid '''
     def __init__(self, val):
-        message = "Invalid soduku configuration."
+        message = "Invalid Sodoku configuration."
         super().__init__(message, str(val))
 
-class SodukuConfig():
+class SodokuConfig():
     '''
-    SodukuConfig -- Container for the state information for a soduku 
+    SodokuConfig -- Container for the state information for a Sodoku 
     configuration
     
     Args:
@@ -24,6 +32,8 @@ class SodukuConfig():
             for each square
         priority list: a list of tuples (row, col), indicating which squares 
             should be filled first.
+        current_level: the square that needs to be tried, counting from the 
+            top of the priority list
     '''
     
     def __init__(self, config):
@@ -31,11 +41,30 @@ class SodukuConfig():
         if config.shape != (9, 9):
                 raise ValueError("Invalid input configuration dimension")
         self.config = config.copy()
-        self.__gen_valid_choices()
-        self.__gen_priority_list()
-        self.current_square = 0
-        self.current_num = 0
+        self.valid_choices = self.__gen_valid_choices()
+        self.priority_list = self.__gen_priority_list()
+        self.current_level = 0
+        self.current_selection = 0
         self.choice_list = []
+        
+    def __eq__(self, other):
+        return numpy.array_equal(self.config, other.config)
+    
+    def __ne__(self, other):
+        return not numpy.array_equal(self.config, other.config)
+    
+    def __next__(self):
+        '''Make the class iterable'''
+        try:
+            return self.gen_config(len(self.choice_list))
+        except OutOfChoice:
+            raise StopIteration
+            
+    def __repr__(self):
+        return (self.config.__repr__())
+    
+    def __str__(self):
+        return (self.config.__str__()).replace("0", "_")
     
     @staticmethod
     def __is_valid_unit(unit):
@@ -65,7 +94,7 @@ class SodukuConfig():
 
     def is_valid(self): 
         ''' 
-        Check if a soduku configuration is valid 
+        Check if a Sodoku configuration is valid 
         
         Returns:
              0: complete and valid configuration
@@ -103,25 +132,25 @@ class SodukuConfig():
                     square_arr[math.floor(i/3), math.floor(j/3), num] = False
                     
         # Calculate the valid choices
-        self.valid_choices = numpy.full((9, 9, 9), True)
+        valid_choices = numpy.full((9, 9, 9), True)
         for i in range(0,9):
             for j in range(0,9):
-                self.valid_choices[i,j] = row_arr[i] & col_arr[j] & \
+                valid_choices[i,j] = row_arr[i] & col_arr[j] & \
                 square_arr[math.floor(i/3), math.floor(j/3)]
+        return valid_choices
                 
     def __gen_priority_list(self):
-        ''' Generate the priority list for a soduku configuration '''
+        ''' Generate the priority list for a Sodoku configuration '''
         self.priority2d = numpy.sum(self.valid_choices, 2)
         prioritytbl = []
         for i in range(0, 9):
             for j in range(0, 9):
                 if self.config[i,j] == 0:
                     prioritytbl.append((i, j, self.priority2d[i, j]))
-        self.priority_list = [(x[0], x[1]) for x in 
-                              sorted(prioritytbl, key=lambda x: x[2]) 
+        return [(x[0], x[1]) for x in sorted(prioritytbl, key=lambda x: x[2]) 
                               if x[2] != 0]
     
-    def gen_choice(self, n):
+    def __gen_choice(self, n):
         '''
         Generate the nth choice from a priority list and valid choices pair
         
@@ -139,18 +168,18 @@ class SodukuConfig():
             return self.choice_list[n]
         
         # Generate new choices
-        for i in range(self.current_square, len(self.priority_list)):
-            self.current_square = i
+        for i in range(self.current_level, len(self.priority_list)):
+            self.current_level = i
             coord = self.priority_list[i]
             choices = self.valid_choices[coord]
-            for j in range(self.current_num, len(choices)):
-                self.current_num = j
+            for j in range(self.current_selection, len(choices)):
+                self.current_selection = j
                 if choices[j]:
                     self.choice_list.append((coord[0], coord[1], j + 1))
                     if n == (len(self.choice_list) - 1):
                         # Manually increase the loop counter by 1, because we
                         # are exiting
-                        self.current_num += 1
+                        self.current_selection += 1
                         return self.choice_list[-1]       
                 
         # We have reached the end without getting a solution 
@@ -158,46 +187,39 @@ class SodukuConfig():
     
     def gen_config(self, n):
         '''
-        Generate a new soduku configuration based on the nth choice
+        Generate a new Sodoku configuration based on the nth choice
         
         Args:
             n: the nth new configuration to generate
             
         Returns:
-            The nth new soduku configuration
+            The nth new Sodoku configuration
         '''
-        choice = self.gen_choice(n)
+        choice = self.__gen_choice(n)
         if choice == (0, 0, 0):
             raise OutOfChoice();
         new_config = numpy.copy(self.config)
         new_config[choice[0], choice[1]] = choice[2]
-        return SodukuConfig(new_config)
-    
-    def __next__(self):
-        '''Make the class iterable'''
-        try:
-            return self.gen_config(len(self.choice_list))
-        except OutOfChoice:
-            raise StopIteration
-            
-    def __repr__(self):
-        return (self.config.__repr__())
-    
-    def __str__(self):
-        return (self.config.__str__())
+        return SodokuConfig(new_config)
         
     
-class SodukuSolver():
+class SodokuSolver():
     '''
-    SodukuSolver -- a soduku solver that uses numpy array
+    SodokuSolver -- a Sodoku solver that uses numpy array
 
     Args:
-        puzzle: the puzzle that needs to be solved
+        input_array: the puzzle that needs to be solved
+        
+    Attributes:
+        configs: the Sodoku configuration stack
+        solution: the Sodoku solution
+        self.limit: the maximum step count before aborting
+        n: the number of steps taken
     '''
 
-    def __init__(self, input_array):
+    def __init__(self, input_array, limit=sys.maxsize):
         ''' Constructor '''
-        self.config_init = SodukuConfig(input_array)
+        self.config_init = SodokuConfig(input_array)
         validity = self.config_init.is_valid()
         if validity == 0:
             raise ValueError("The input puzzle has already been solved.")
@@ -205,59 +227,48 @@ class SodukuSolver():
         # The configurations we have tried
         self.configs = [self.config_init]
         self.solution = None
+        self.limit = limit
         self.n = 0
     
-    def solve(self):
-        '''
-        Solve a Soduku puzzle using depth-first search with backtracking
-        '''
-
-        # While we still have squares to fill, try to fill the squares
-        while self.configs[-1].is_valid() > 0 and self.n < 100:
-            try:
-                self.configs.append(next(self.configs[-1]))
-            except StopIteration:
-                self.configs.pop()
-                next(self.configs[-1])
-            self.n += 1
-        self.solution = self.configs[-1]
-        return self.solution
-
     def __len__(self):
         return self.configs.__len__()
     
     def __repr__(self):
-        return "<SodokuSolver: " + str(self.__len__()) + ">"
+        return "<SodokuSolver: len:" + str(self.__len__()) + ">"
     
     def __str__(self):
-        return "SodukuSolver: " + str(self.__len__()) + "\n" + self.configs[-1].__str__()
+        return "--- SodokuSolver --- \n" + \
+            "Step count: " + str(self.n) + "\n" + \
+            "Stack length: " + str(self.__len__()) + "\n" + \
+            self.configs[-1].__str__() + "\n"
     
     def __getitem__(self, i):
         return self.configs[i]
     
-if __name__ == '__main__':
-    current_config = numpy.array(
-                    [[0, 0, 3, 0, 4, 2, 0, 9, 0],
-                    [0, 9, 0, 0, 6, 0, 5, 0, 0],
-                    [5, 0, 0, 0, 0, 0, 0, 1, 0],
-                    [0, 0, 1, 7, 0, 0, 2, 8, 5],
-                    [0, 0, 8, 0, 0, 0, 1, 0, 0],
-                    [3, 2, 9, 0, 0, 8, 7, 0, 0],
-                    [0, 3, 0, 0, 0, 0, 0, 0, 1],
-                    [0, 0, 5, 0, 9, 0, 0, 2, 0],
-                    [0, 8, 0, 2, 1, 0, 6, 0, 0]])
-#    state = SodukuConfig(current_config)
-#    print(next(state))
-#    print(next(state))
-#    print(next(state))
-#    print(state.choice_list)
-#    print(state.gen_choice(0))
-#    print(state.gen_choice(1))
-#    print(state.gen_choice(2))
-#    print(state)
+    def solve(self):
+        '''
+        Solve a Sodoku puzzle using depth-first search with backtracking
+        '''
+        # While we still have squares to fill, try and fill the squares
+        while self.configs[-1].is_valid() > 0 and self.n < self.limit:
+            if not (self.n % 10000):
+                print(self)
+            try:
+                self.configs.append(next(self.configs[-1]))
+            except StopIteration:
+                self.configs.pop()
+            self.n += 1
+                           
+        self.solution = self.configs[-1]
+        return self.solution
 
-    solver = SodukuSolver(current_config)
-    print(solver.config_init)
-    print(solver.solve())
+    def identical_state_detection(self, n):
+        if self.n > n:
+            for i in range(-1, -n, -1):
+                for j in range(-n+1, 0):
+                    if i!= j:
+                        if self.configs[i] == self.configs[i]:
+                            return True
+                        
 
 
