@@ -5,7 +5,6 @@ Example sodoku puzzles to be tested
 
 @author: fangfufu
 """
-import time
 import numpy
 from sudoku import SudokuSolver
 
@@ -131,6 +130,6 @@ if __name__ == '__main__':
     
     zeros = numpy.zeros([9, 9], int)
     
-    solver = SudokuSolver(fiendish_5, check_identical_config=True)
+    solver = SudokuSolver(fiendish_1)
     solver.solve()
     print(solver)

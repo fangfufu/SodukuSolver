@@ -9,19 +9,19 @@ import numpy
 import math
 import sys
 
-class OutOfdecision(Exception):
-    ''' For use by SudokuConfig, when running out of decisions'''
+class OutOfDecisions(Exception):
+    ''' For use by SudokuState, when running out of decisions'''
     pass
 
 class InvalidConfiguration(ValueError):
-    ''' For use by SudokuConfig, when the sudoku configuration is valid '''
+    ''' For use by SudokuState, when the sudoku configuration is valid '''
     def __init__(self, val):
         message = "Invalid sudoku configuration."
         super().__init__(message, str(val))
 
-class SudokuConfig():
+class SudokuState():
     '''
-    SudokuConfig -- Container for the state information for a sudoku 
+    SudokuState -- Container for the state information for a sudoku 
     configuration
     
     Args:
@@ -34,6 +34,11 @@ class SudokuConfig():
             should be filled first.
         current_level: the square that needs to be tried, counting from the 
             top of the priority list
+        current_choice: the last choice made at the current level, by combining
+            level and choice, we form a decision
+        decision_cache: a log of all the previous decisions made, not strictly
+            necessary, as we don't seem to visit previous decision in the
+            actual solver
     '''
     
     def __init__(self, config):
@@ -56,14 +61,17 @@ class SudokuConfig():
         '''Make the class iterable'''
         try:
             return self.gen_config(len(self.decision_cache))
-        except OutOfdecision:
+        except OutOfDecisions:
             raise StopIteration
             
     def __repr__(self):
-        return (self.config.__repr__())
+        return (self.config.__repr__()).replace("array", "SudokuState\n\t ")
     
     def __str__(self):
-        return (self.config.__str__()).replace("0", "_")
+        return "___________________\n" + \
+            self.config.__str__().replace("0", "_") \
+            .replace("[[", "[").replace(" [","|") \
+            .replace("]]", "|").replace("]","|") + "\n‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾"
     
     @staticmethod
     def __is_valid_unit(unit):
@@ -170,15 +178,15 @@ class SudokuConfig():
         for i in range(self.current_level, len(self.priority_list)):
             self.current_level = i
             coord = self.priority_list[i]
-            decisions = self.valid_decisions[coord]
-            for j in range(self.current_decision, len(decisions)):
-                self.current_decision = j
-                if decisions[j]:
+            choices = self.valid_decisions[coord]
+            for j in range(self.current_decision, len(choices)):
+                self.current_choice = j
+                if choices[j]:
                     self.decision_cache.append((coord[0], coord[1], j + 1))
                     if n == (len(self.decision_cache) - 1):
                         # Manually increase the loop counter by 1, because we
                         # are exiting
-                        self.current_decision += 1
+                        self.current_choice += 1
                         return self.decision_cache[-1]       
                 
         # We have reached the end without getting a solution 
@@ -196,10 +204,10 @@ class SudokuConfig():
         '''
         decision = self.__gen_decision(n)
         if decision == (0, 0, 0):
-            raise OutOfdecision();
+            raise OutOfDecisions();
         new_config = numpy.copy(self.config)
         new_config[decision[0], decision[1]] = decision[2]
-        return SudokuConfig(new_config)
+        return SudokuState(new_config)
         
     
 class SudokuSolver():
@@ -213,11 +221,13 @@ class SudokuSolver():
             is identical to a previously generated configuration. 
         
     Attributes:
-        config_stack: the sudoku configuration stack
-        tried_config: the sudoku configuration we have tried
+        state_stack: the sudoku configuration stack
+        generated_states: the sudoku configuration we have previously generated
         solution: the sudoku solution
         self.limit: the maximum step count before aborting
-        n: the number of steps taken
+        step: the number of configuration generated in total so far
+        check_identical_config: check whether the newly generated configuration
+            is identical to a previously generated configuration.
     '''
 
     def __init__(self, 
@@ -225,60 +235,64 @@ class SudokuSolver():
                  limit=sys.maxsize, 
                  check_identical_config=True):
         ''' Constructor '''
-        self.config_init = SudokuConfig(input_array)
+        self.config_init = SudokuState(input_array)
         validity = self.config_init.is_valid()
         if validity == 0:
             raise ValueError("The input puzzle has already been solved.")
         
         # The configurations we have tried
-        self.config_stack = [self.config_init]
-        self.tried_config = []
+        self.state_stack = [self.config_init]
+        self.generated_states = []
         self.solution = None
-        self.limit = limit
         self.step = 0
+        self.limit = limit
         self.check_identical_config = check_identical_config
-    
-    def __repr__(self):
-        return "<SudokuSolver: len:" + str(self.__len__()) + ">"
-    
+   
     def __str__(self):
         return "--- SudokuSolver --- \n" + \
             "Step count: " + str( self.step) + "\n" + \
-            "Tried length: " + str(self.tried_config.__len__()) + "\n" + \
-            "Stack length: " + str(self.config_stack.__len__()) + "\n" + \
-            self.config_stack[-1].__str__() + "\n"
-    
+            "Generated length: " + str(self.generated_states.__len__()) + \
+            "\n" + \
+            "Stack length: " + str(self.state_stack.__len__()) + "\n" + \
+            self.state_stack[-1].__str__()
+            
+    def __repr__(self):
+        return "<SudokuSolver - " + \
+            "step: " + str( self.step) + \
+            ", gen len: " + str(self.generated_states.__len__()) + \
+            ", stack len: " + str(self.state_stack.__len__()) +">"
+            
     def __getitem__(self, i):
-        return self.config_stack[i]
+        return self.state_stack[i]
     
     def solve(self):
         '''
         Solve a sudoku puzzle using depth-first search with backtracking
         '''
         # While we still have squares to fill, try and fill the squares
-        while self.config_stack[-1].is_valid() > 0 and  self.step < self.limit:
+        while self.state_stack[-1].is_valid() > 0 and  self.step < self.limit:
             if not ( self.step % 10000):
                 print(self)
             try:
                 self.step += 1
-                next_config = next(self.config_stack[-1])
+                next_config = next(self.state_stack[-1])
                 if not self.check_identical_config:
-                    self.config_stack.append(next_config)
+                    self.state_stack.append(next_config)
                 else:
                     if self.config_already_exists(next_config):
                         continue
                     else:
-                        self.tried_config.append(next_config)
-                        self.config_stack.append(next_config)
+                        self.generated_states.append(next_config)
+                        self.state_stack.append(next_config)
                     
             except StopIteration:
-                self.config_stack.pop()
+                self.state_stack.pop()
 
-        self.solution = self.config_stack[-1]
+        self.solution = self.state_stack[-1]
         return self.solution
 
     def config_already_exists(self, this_config):
-        for i in range(-1, -len(self.tried_config)-1, -1):
-            if this_config == self.tried_config[i]:
+        for i in range(-1, -len(self.generated_states)-1, -1):
+            if this_config == self.generated_states[i]:
                 return True
                         
