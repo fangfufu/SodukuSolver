@@ -128,7 +128,8 @@ if __name__ == '__main__':
             [0 ,0, 0, 0, 0, 5, 0, 0, 0]
             ])
     
-    solver = SudokuSolver(fiendish_5, check_identical_config=True)
+    zeros = numpy.zeros([9, 9], int)
+    
+    solver = SudokuSolver(zeros, check_identical_config=True)
     solver.solve()
     print(solver)
-    print(time.process_time())
