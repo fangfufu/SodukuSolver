@@ -48,7 +48,7 @@ class SudokuState():
         self.valid_decisions = self.__gen_valid_decisions_array()
         self.priority_list = self.__gen_priority_list()
         self.current_level = 0
-        self.current_decision = 0
+        self.current_choice = 0
         self.decision_cache = []
         
     def __eq__(self, other):
@@ -179,7 +179,7 @@ class SudokuState():
             self.current_level = i
             coord = self.priority_list[i]
             choices = self.valid_decisions[coord]
-            for j in range(self.current_decision, len(choices)):
+            for j in range(self.current_choice, len(choices)):
                 self.current_choice = j
                 if choices[j]:
                     self.decision_cache.append((coord[0], coord[1], j + 1))

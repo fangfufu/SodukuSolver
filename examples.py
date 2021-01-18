@@ -130,6 +130,18 @@ if __name__ == '__main__':
     
     zeros = numpy.zeros([9, 9], int)
     
-    solver = SudokuSolver(fiendish_1)
+    ellie_0 = numpy.array([
+            [0, 0, 0, 0, 0, 0, 4, 2, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1],
+            [8, 9, 4, 0, 0, 0, 0, 0, 6],
+            [0, 6, 0, 2, 4, 0, 0, 0, 0],
+            [1, 0, 0, 5, 0, 8, 0, 0, 0],
+            [0, 0, 8, 0, 7, 9, 0, 0, 0],
+            [0, 4, 0, 8, 0, 0, 3, 0, 0],
+            [5, 0, 2, 0, 0, 7, 6, 0, 0],
+            [0, 8, 0, 0, 6, 0, 5, 0, 0]
+            ])
+    
+    solver = SudokuSolver(ellie_0)
     solver.solve()
     print(solver)
