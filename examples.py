@@ -97,7 +97,7 @@ if __name__ == '__main__':
             ])
     
     # Step count: 205798
-    # Tried length: 81027
+    # Generated length: 81027
     # Stack length: 58
     fiendish_5 = numpy.array([
             [0, 0, 7, 3, 0, 0, 2, 0, 5],
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     #https://norvig.com/top95solutions.html
     # This seems to be Peter Norvig's hardest puzzle
     #Step count: 11444
-    #Tried length: 4685
+    #Generated length: 4685
     #Stack length: 58
     norvig_0_19 = numpy.array([
             [0, 0, 2, 4, 7, 0, 0, 5, 8],
@@ -130,6 +130,9 @@ if __name__ == '__main__':
     
     zeros = numpy.zeros([9, 9], int)
     
+    #Step count: 18830
+    #Generated length: 7370
+    #Stack length: 56
     ellie_0 = numpy.array([
             [0, 0, 0, 0, 0, 0, 4, 2, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 1],
@@ -142,6 +145,6 @@ if __name__ == '__main__':
             [0, 8, 0, 0, 6, 0, 5, 0, 0]
             ])
     
-    solver = SudokuSolver(ellie_0)
-    solver.solve()
+    solver = SudokuSolver(fiendish_5)
+#    solver.solve()
     print(solver)

@@ -57,6 +57,9 @@ class SudokuState():
     def __ne__(self, other):
         return not numpy.array_equal(self.config, other.config)
     
+    def __hash__(self):
+        return self.config.tobytes().__hash__()
+    
     def __next__(self):
         '''Make the class iterable'''
         try:
