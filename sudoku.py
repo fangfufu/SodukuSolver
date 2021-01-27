@@ -220,8 +220,6 @@ class SudokuSolver():
     Args:
         input_array: the puzzle that needs to be solved
         limit: the maximun number of step to attempt before terminating
-        check_identical_config: check whether the newly generated configuration
-            is identical to a previously generated configuration. 
         
     Attributes:
         state_stack: the sudoku configuration stack
@@ -229,14 +227,12 @@ class SudokuSolver():
         solution: the sudoku solution
         self.limit: the maximum step count before aborting
         step: the number of configuration generated in total so far
-        check_identical_config: check whether the newly generated configuration
-            is identical to a previously generated configuration.
     '''
 
     def __init__(self, 
                  input_array, 
                  limit=sys.maxsize, 
-                 check_identical_config=True):
+                 check_identical_state=True):
         ''' Constructor '''
         self.config_init = SudokuState(input_array)
         validity = self.config_init.is_valid()
@@ -245,11 +241,10 @@ class SudokuSolver():
         
         # The configurations we have tried
         self.state_stack = [self.config_init]
-        self.generated_states = []
+        self.generated_states = set()
         self.solution = None
         self.step = 0
         self.limit = limit
-        self.check_identical_config = check_identical_config
    
     def __str__(self):
         return "--- SudokuSolver --- \n" + \
@@ -278,15 +273,13 @@ class SudokuSolver():
                 print(self)
             try:
                 self.step += 1
-                next_config = next(self.state_stack[-1])
-                if not self.check_identical_config:
-                    self.state_stack.append(next_config)
+                next_state = next(self.state_stack[-1])
+
+                if self.state_already_exists(next_state):
+                    continue
                 else:
-                    if self.config_already_exists(next_config):
-                        continue
-                    else:
-                        self.generated_states.append(next_config)
-                        self.state_stack.append(next_config)
+                    self.generated_states.add(next_state)
+                    self.state_stack.append(next_state)
                     
             except StopIteration:
                 self.state_stack.pop()
@@ -294,8 +287,6 @@ class SudokuSolver():
         self.solution = self.state_stack[-1]
         return self.solution
 
-    def config_already_exists(self, this_config):
-        for i in range(-1, -len(self.generated_states)-1, -1):
-            if this_config == self.generated_states[i]:
-                return True
+    def state_already_exists(self, this_state):
+        return this_state in self.generated_states
                         

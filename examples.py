@@ -6,6 +6,7 @@ Example sodoku puzzles to be tested
 @author: fangfufu
 """
 import numpy
+import time
 from sudoku import SudokuSolver
 
 if __name__ == '__main__':
@@ -146,5 +147,7 @@ if __name__ == '__main__':
             ])
     
     solver = SudokuSolver(fiendish_5)
-#    solver.solve()
+    start_time = time.time()
+    solver.solve()
     print(solver)
+    print("--- %s seconds ---" % (time.time() - start_time))
