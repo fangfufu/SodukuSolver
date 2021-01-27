@@ -275,7 +275,7 @@ class SudokuSolver():
                 self.step += 1
                 next_state = next(self.state_stack[-1])
 
-                if self.state_already_exists(next_state):
+                if next_state in self.generated_states:
                     continue
                 else:
                     self.generated_states.add(next_state)
@@ -286,7 +286,4 @@ class SudokuSolver():
 
         self.solution = self.state_stack[-1]
         return self.solution
-
-    def state_already_exists(self, this_state):
-        return this_state in self.generated_states
                         
