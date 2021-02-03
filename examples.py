@@ -100,6 +100,7 @@ if __name__ == '__main__':
     # Step count: 205798
     # Generated length: 81027
     # Stack length: 58
+    #--- 82.87294340133667 seconds ---
     fiendish_5 = numpy.array([
             [0, 0, 7, 3, 0, 0, 2, 0, 5],
             [0, 0, 4, 0, 0, 9, 0, 0, 0],
@@ -117,6 +118,7 @@ if __name__ == '__main__':
     #Step count: 11444
     #Generated length: 4685
     #Stack length: 58
+    #--- 4.6510090827941895 seconds ---
     norvig_0_19 = numpy.array([
             [0, 0, 2, 4, 7, 0, 0, 5, 8],
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -145,8 +147,20 @@ if __name__ == '__main__':
             [5, 0, 2, 0, 0, 7, 6, 0, 0],
             [0, 8, 0, 0, 6, 0, 5, 0, 0]
             ])
+
+    hardest = numpy.array([
+            [8, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 3, 6, 0, 0, 0, 0, 0],
+            [0, 7, 0, 0, 9, 0, 2, 0, 0],
+            [0, 5, 0, 0, 0, 7, 0, 0, 0],
+            [0, 0, 0, 0, 4, 5, 7, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0, 3, 0],
+            [0, 0, 1, 0, 0, 0, 0, 6, 8],
+            [0, 0, 8, 5, 0, 0, 0, 1, 0],
+            [0, 9, 0, 0, 0, 0, 4, 0, 0]
+        ])
     
-    solver = SudokuSolver(fiendish_5)
+    solver = SudokuSolver(norvig_0_19)
     start_time = time.time()
     solver.solve()
     print(solver)
