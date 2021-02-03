@@ -9,10 +9,6 @@ import numpy
 import math
 import sys
 
-class OutOfDecisions(Exception):
-    ''' For use by SudokuState, when running out of decisions'''
-    pass
-
 class InvalidConfiguration(ValueError):
     ''' For use by SudokuState, when the sudoku configuration is valid '''
     def __init__(self, val):
@@ -32,13 +28,8 @@ class SudokuState():
             decisions for each square
         priority list: a list of tuples (row, col), indicating which squares 
             should be filled first.
-        current_level: the square that needs to be tried, counting from the 
-            top of the priority list
-        current_choice: the last choice made at the current level, by combining
-            level and choice, we form a decision
-        decision_cache: a log of all the previous decisions made, not strictly
-            necessary, as we don't seem to visit previous decision in the
-            actual solver
+        decision_list: a list of all possible decisions
+        n: the current 
     '''
     
     def __init__(self, config):
@@ -47,9 +38,8 @@ class SudokuState():
         self.config = config.copy()
         self.valid_decisions = self.__gen_valid_decisions_array()
         self.priority_list = self.__gen_priority_list()
-        self.current_level = 0
-        self.current_choice = 0
-        self.decision_cache = []
+        self.decision_list = self.__gen_decision_list()
+        self.n = 0
         
     def __eq__(self, other):
         return numpy.array_equal(self.config, other.config)
@@ -62,10 +52,11 @@ class SudokuState():
     
     def __next__(self):
         '''Make the class iterable'''
-        try:
-            return self.gen_config(len(self.decision_cache))
-        except OutOfDecisions:
+        if self.n >= len(self.decision_list):
             raise StopIteration
+        new_config = self.gen_config(self.n)
+        self.n += 1
+        return new_config
             
     def __repr__(self):
         return (self.config.__repr__()).replace("array", "SudokuState\n\t ")
@@ -160,41 +151,23 @@ class SudokuState():
         return [(x[0], x[1]) for x in sorted(prioritytbl, key=lambda x: x[2]) 
                               if x[2] != 0]
     
-    def __gen_decision(self, n):
+    def __gen_decision_list(self):
         '''
-        Generate the nth decision from a priority list and valid decisions pair
-        
-        Args: 
-            n: the nth decision to generate
-            
+        Generate the decision list the priority list and valid decisions pair
+                   
         Returns:
-            The nth decision at the current configuration in the format of 
-            (row, col, num), so square at (row, col) needs to be filled with 
-            num. (0, 0, 0) will be returned if a decision cannot be generated.
+            The decision list (a list of (row, col, num)) of the current 
+            configuration in the format of so square at (row, col) needs to be
+            filled with num. 
         '''
         
-        # We have cached the previous decisions for backtracking
-        if n < len(self.decision_cache):
-            return self.decision_cache[n]
-        
-        # Generate new decisions
-        for i in range(self.current_level, len(self.priority_list)):
-            self.current_level = i
-            coord = self.priority_list[i]
-            choices = self.valid_decisions[coord]
-            for j in range(self.current_choice, len(choices)):
-                self.current_choice = j
-                if choices[j]:
-                    self.decision_cache.append((coord[0], coord[1], j + 1))
-                    if n == (len(self.decision_cache) - 1):
-                        # Manually increase the loop counter by 1, because we
-                        # are exiting
-                        self.current_choice += 1
-                        return self.decision_cache[-1]       
-                
-        # We have reached the end without getting a solution 
-        return (0, 0, 0)
-    
+        decision_list = []
+        for coord in self.priority_list:
+            for num, decision in enumerate(self.valid_decisions[coord]):
+                if decision:
+                    decision_list.append((coord[0], coord[1], num + 1))
+        return decision_list
+                    
     def gen_config(self, n):
         '''
         Generate a new sudoku configuration based on the nth decision
@@ -205,13 +178,10 @@ class SudokuState():
         Returns:
             The nth new sudoku configuration
         '''
-        decision = self.__gen_decision(n)
-        if decision == (0, 0, 0):
-            raise OutOfDecisions();
+        decision = self.decision_list[n]
         new_config = numpy.copy(self.config)
         new_config[decision[0], decision[1]] = decision[2]
         return SudokuState(new_config)
-        
     
 class SudokuSolver():
     '''
