@@ -160,7 +160,7 @@ class SudokuState():
         return [(x[0], x[1]) for x in sorted(prioritytbl, key=lambda x: x[2]) 
                               if x[2] != 0]
     
-    def __gen_decision(self, n):
+    def gen_decision(self, n):
         '''
         Generate the nth decision from a priority list and valid decisions pair
         
@@ -179,19 +179,26 @@ class SudokuState():
         
         # Generate new decisions
         for i in range(self.current_level, len(self.priority_list)):
+#            print("i: ", str(i))
             self.current_level = i
             coord = self.priority_list[i]
             choices = self.valid_decisions[coord]
             for j in range(self.current_choice, len(choices)):
+#                print("j: ", str(j))
                 self.current_choice = j
                 if choices[j]:
-                    self.decision_cache.append((coord[0], coord[1], j + 1))
+                    self.decision_cache.append((coord[0], coord[1], j + 1))                  
                     if n == (len(self.decision_cache) - 1):
                         # Manually increase the loop counter by 1, because we
                         # are exiting
                         self.current_choice += 1
-                        return self.decision_cache[-1]       
-                
+                        if j == len(choices):
+                            self.current_choice == 0
+                            self.current_level += 1
+                        return self.decision_cache[-1]
+                if j == (len(choices) - 1):
+                    self.current_choice = 0
+               
         # We have reached the end without getting a solution 
         return (0, 0, 0)
     
@@ -205,7 +212,7 @@ class SudokuState():
         Returns:
             The nth new sudoku configuration
         '''
-        decision = self.__gen_decision(n)
+        decision = self.gen_decision(n)
         if decision == (0, 0, 0):
             raise OutOfDecisions();
         new_config = numpy.copy(self.config)
